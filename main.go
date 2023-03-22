@@ -10,6 +10,7 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 	"log"
 	"os"
+	"strings"
 )
 
 func main() {
@@ -60,6 +61,11 @@ func doWrite(sector int, encrypt bool, filePath string) {
 	var password []byte
 	if encrypt {
 		password = getPassword()
+		fmt.Println("Confirm password:")
+		password2 := getPassword()
+		if strings.Compare(string(password), string(password2)) != 0 {
+			log.Fatalln("Passwords didn't match")
+		}
 		file := lib.PadToMultipleOf8(file)
 		dataToWrite, err = lib.EncryptBytes(file, password)
 		if err != nil {
@@ -72,11 +78,12 @@ func doWrite(sector int, encrypt bool, filePath string) {
 	// Prepend the length that we are writing as two bytes, this allows multiple records
 	lengthSlice := make([]byte, 2)
 	binary.BigEndian.PutUint16(lengthSlice, uint16(len(dataToWrite)))
-
+	fmt.Println("Press the Enter Key to start writing...")
+	fmt.Scanln()
 	lib.WriteSector(sector, lib.PadToMultipleOf8(append(lengthSlice, dataToWrite...)))
 	log.Println("Sector written successfully")
 
-	// Verify the write once we have written)
+	// Verify write once we have written
 	readBack := lib.Dump(sector)
 	sourceHash := sha256.Sum256(dataToWrite)
 	readLength := binary.BigEndian.Uint16(readBack[16:18])
